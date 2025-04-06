@@ -1,10 +1,6 @@
 fastapi
 uvicorn
-inference-sdk
 python-multipart
+roboflow
 httpx
 deep-translator
-fastapi
-uvicorn
-
-# Версия 1.0.3 – добавлен текстовый поиск и расширенные категории одежды
