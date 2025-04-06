@@ -4,3 +4,5 @@ inference-sdk
 python-multipart
 httpx
 deep-translator
+
+# Версия 1.0.3 – добавлен текстовый поиск и расширенные категории одежды
