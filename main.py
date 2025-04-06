@@ -9,7 +9,7 @@ app = FastAPI()
 
 CLIENT = InferenceHTTPClient(
     api_url="https://detect.roboflow.com",
-    api_key="your_roboflow_api_key"
+    api_key="VJmICXJRnj9bYjhmsktT"
 )
 
 clothing_to_brands = {
