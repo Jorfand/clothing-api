@@ -9,7 +9,7 @@ app = FastAPI()
 
 CLIENT = InferenceHTTPClient(
     api_url="https://detect.roboflow.com",
-    api_key="YOUR_API_KEY"
+    api_key="VJmICXJRnj9bYjhmsktT"
 )
 
 translation_dict = {
