@@ -2,4 +2,5 @@ fastapi
 uvicorn
 inference-sdk
 python-multipart
+httpx
 deep-translator
