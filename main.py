@@ -1,38 +1,48 @@
-
-from fastapi import FastAPI, UploadFile, File
+from fastapi import FastAPI, File, UploadFile
 from fastapi.responses import JSONResponse
-from inference_sdk import InferenceHTTPClient
-import uvicorn
+from inference import InferenceClient
 import shutil
+import uuid
 import os
 
 app = FastAPI()
 
-# API-клиент Roboflow (скрыт от клиента, безопасно)
-CLIENT = InferenceHTTPClient(
-    api_url="https://detect.roboflow.com",
-    api_key="VJmICXJRnj9bYjhmsktT"  # Заменить на свой рабочий ключ
-)
+CLIENT = InferenceClient(api_url="https://detect.roboflow.com", api_key="YOUR_API_KEY")
+
+translation_dict = {
+    "T-shirt": "Футболка",
+    "Jacket": "Куртка",
+    "Dress": "Платье",
+    "Jeans": "Джинсы",
+}
+
+@app.get("/")
+def read_root():
+    return {"message": "Clothing API is running!"}
 
 @app.post("/detect")
-async def detect_image(image: UploadFile = File(...)):
+async def detect(file: UploadFile = File(...)):
+    temp_filename = f"temp_{uuid.uuid4().hex}.jpg"
+    with open(temp_filename, "wb") as buffer:
+        shutil.copyfileobj(file.file, buffer)
+
     try:
-        # Сохраняем временно файл
-        temp_path = f"temp_{image.filename}"
-        with open(temp_path, "wb") as buffer:
-            shutil.copyfileobj(image.file, buffer)
+        result = CLIENT.infer(temp_filename, model_id="clothing-detection-scn9m/1")
+        predictions = result.get("predictions", [])
+        items = []
 
-        # Отправляем на Roboflow
-        result = CLIENT.infer(temp_path, model_id="clothing-detection-scn9m/1")
+        for prediction in predictions:
+            cls = prediction["class"]
+            conf = prediction["confidence"]
+            translated_cls = translation_dict.get(cls, cls)
+            items.append({
+                "class": translated_cls,
+                "confidence": round(conf, 2)
+            })
 
-        # Удаляем временный файл
-        os.remove(temp_path)
-
-        return JSONResponse(content=result)
+        return JSONResponse(content={"results": items})
 
     except Exception as e:
         return JSONResponse(status_code=500, content={"error": str(e)})
-
-# Для локального теста
-if __name__ == "__main__":
-    uvicorn.run(app, host="0.0.0.0", port=8000)
+    finally:
+        os.remove(temp_filename)
