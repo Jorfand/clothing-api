@@ -2,3 +2,4 @@ fastapi
 uvicorn
 inference-sdk
 python-multipart
+deep-translator
