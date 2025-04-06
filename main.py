@@ -1,88 +1,85 @@
-from fastapi import FastAPI, File, UploadFile, Request, Query
+from fastapi import FastAPI, File, UploadFile, Request
 from fastapi.responses import JSONResponse
-from inference_sdk import InferenceHTTPClient
 from deep_translator import GoogleTranslator
-import shutil
-import uuid
-import os
+from inference_sdk import InferenceHTTPClient
 import httpx
+import os
 
 app = FastAPI()
 
 CLIENT = InferenceHTTPClient(
     api_url="https://detect.roboflow.com",
-    api_key="VJmICXJRnj9bYjhmsktT"
+    api_key="your_roboflow_api_key"
 )
 
-# Универсальный список брендов
-ALL_BRANDS = [
-    "Gucci", "Chanel", "Dior", "Nike", "Adidas", "Puma", "Reebok", "Fila", "Zara",
-    "H&M", "New Yorker", "ASICS", "Saucony", "Palombier", "Givenchy", "Saint Laurent",
-    "Valentino", "Prada", "Fendi", "Versace", "Balenciaga", "Kenzo", "Dolce&Gabbana",
-    "Pierre Cardin", "Polo Ralph Lauren", "Gant", "Stone Island", "Brioni", "Bugatti",
-    "Hugo", "Boss", "Burberry", "Canada Goose", "Lacoste", "Emporio Armani", "Moncler",
-    "Balmain", "Columbia", "Hermès", "Bottega Veneta", "Louis Vuitton", "Dr. Martens",
-    "Crocs", "Salomon", "Timberland", "New Balance", "Converse", "Ecco", "Vans",
-    "Breguet", "Rolex", "Omega", "Cartier", "Blancpain"
-]
-
-# Универсальный список магазинов (пример)
-ALL_STORES = [
-    "Zalando", "Farfetch", "ASOS", "AliExpress", "Amazon", "Shein", "Uniqlo", "Zara",
-    "Nike", "Adidas", "H&M", "Gucci", "Chanel", "Dior"
-]
-
-# Словарь: категория одежды -> список брендов (все бренды)
 clothing_to_brands = {
-    "jacket": ALL_BRANDS, "coat": ALL_BRANDS, "shirt": ALL_BRANDS, "t-shirt": ALL_BRANDS,
-    "hoodie": ALL_BRANDS, "sweater": ALL_BRANDS, "shorts": ALL_BRANDS, "pants": ALL_BRANDS,
-    "jeans": ALL_BRANDS, "leggings": ALL_BRANDS, "underwear": ALL_BRANDS, "socks": ALL_BRANDS,
-    "bra": ALL_BRANDS, "hat": ALL_BRANDS, "cap": ALL_BRANDS, "beanie": ALL_BRANDS,
-    "glasses": ALL_BRANDS, "skirt": ALL_BRANDS, "dress": ALL_BRANDS, "suit": ALL_BRANDS,
-    "blazer": ALL_BRANDS, "pajamas": ALL_BRANDS, "boots": ALL_BRANDS, "sneakers": ALL_BRANDS,
-    "shoes": ALL_BRANDS, "loafers": ALL_BRANDS, "slippers": ALL_BRANDS, "sandals": ALL_BRANDS,
-    "heels": ALL_BRANDS, "flip-flops": ALL_BRANDS
+    "shirt": ["Nike", "Adidas", "Puma", "Gucci", "Zara", "H&M"],
+    "pants": ["Levi's", "Diesel", "Wrangler", "Gucci", "Armani"],
+    "shoes": ["Nike", "Adidas", "Reebok", "Puma", "Converse", "Vans"],
+    "shorts": ["Nike", "Adidas", "Gucci", "Zara", "H&M"],
+    "hoodie": ["Champion", "Nike", "Adidas", "Puma", "H&M"],
+    "hat": ["New Era", "Nike", "Adidas", "Puma", "Gucci"],
+    "jacket": ["The North Face", "Columbia", "Zara", "Gucci", "H&M"],
+    "dress": ["Zara", "H&M", "Gucci", "Versace", "Chanel"],
+    "t-shirt": ["Nike", "Adidas", "Gucci", "Uniqlo", "H&M"],
+    "sneakers": ["Nike", "Adidas", "Reebok", "Puma", "New Balance"]
 }
 
-# Получение языка по IP
-async def get_language_by_ip(ip: str) -> str:
+brand_store_links = {
+    "Nike": "https://www.nike.com",
+    "Adidas": "https://www.adidas.com",
+    "Puma": "https://www.puma.com",
+    "Gucci": "https://www.gucci.com",
+    "Zara": "https://www.zara.com",
+    "H&M": "https://www2.hm.com",
+    "Levi's": "https://www.levi.com",
+    "Diesel": "https://global.diesel.com",
+    "Wrangler": "https://www.wrangler.com",
+    "Champion": "https://www.champion.com",
+    "New Era": "https://www.neweracap.com",
+    "The North Face": "https://www.thenorthface.com",
+    "Columbia": "https://www.columbia.com",
+    "Versace": "https://www.versace.com",
+    "Chanel": "https://www.chanel.com",
+    "Uniqlo": "https://www.uniqlo.com",
+    "Reebok": "https://www.reebok.com",
+    "Converse": "https://www.converse.com",
+    "Vans": "https://www.vans.com",
+    "New Balance": "https://www.newbalance.com"
+}
+
+async def get_language_by_ip(ip: str):
     try:
         async with httpx.AsyncClient() as client:
-            response = await client.get(f"https://ipapi.co/{ip}/json/")
+            response = await client.get(f"http://ip-api.com/json/{ip}")
             data = response.json()
-            country = data.get("country", "").lower()
-        return {
-            "de": "de", "nl": "nl", "es": "es", "fr": "fr", "it": "it", "us": "en", "gb": "en",
-            "ru": "ru", "ua": "uk", "in": "hi", "cn": "zh-CN", "jp": "ja", "kr": "ko", "vn": "vi",
-            "no": "no", "is": "is", "ch": "de", "il": "he", "sa": "ar", "ae": "ar", "eg": "ar",
-            "kz": "kk"
-        }.get(country, "en")
-    except:
+            country_code = data.get("countryCode", "").lower()
+
+            language_map = {
+                "de": "de", "nl": "nl", "es": "es", "it": "it", "fr": "fr",
+                "en": "en", "ru": "ru", "ua": "uk", "in": "hi", "cn": "zh-CN",
+                "jp": "ja", "kr": "ko", "vn": "vi", "no": "no", "is": "is",
+                "ch": "de", "ae": "ar", "il": "iw", "kz": "kk"
+            }
+
+            return language_map.get(country_code, "en")
+    except Exception:
         return "en"
 
-# Перевод
-def translate_class(cls: str, target_lang: str) -> str:
+def translate_class(class_name: str, target_lang: str):
     try:
-        return GoogleTranslator(source='en', target=target_lang).translate(cls)
-    except:
-        return cls
-
-@app.get("/")
-def read_root():
-    return {"message": "AI Fashion Finder is running."}
+        return GoogleTranslator(source='auto', target=target_lang).translate(class_name)
+    except Exception:
+        return class_name
 
 @app.post("/detect")
-async def detect(request: Request, file: UploadFile = File(...), lang: str = Query(None)):
-    temp_filename = f"temp_{uuid.uuid4().hex}.jpg"
-    with open(temp_filename, "wb") as buffer:
-        shutil.copyfileobj(file.file, buffer)
-
+async def detect(request: Request, file: UploadFile = File(...), lang: str = None):
     try:
         if not lang:
             client_host = request.client.host
             lang = await get_language_by_ip(client_host)
 
-        result = CLIENT.infer(temp_filename, model_id="clothing-detection-scn9m/1")
+        result = CLIENT.infer(file.file, model_id="clothing-detection-scn9m/1")
         predictions = result.get("predictions", [])
         items = []
 
@@ -94,55 +91,18 @@ async def detect(request: Request, file: UploadFile = File(...), lang: str = Que
             brands = clothing_to_brands.get(cls.lower(), [])
             stores = []
             for brand in brands:
-            stores.append({
-            "brand": brand,
-            "store_link": brand_store_links.get(brand, f"https://www.google.com/search?q={brand}+{cls}")
-        })
+                stores.append({
+                    "brand": brand,
+                    "store_link": brand_store_links.get(brand, f"https://www.google.com/search?q={brand}+{cls}")
+                })
 
-    items.append({
-        "class": translated_cls,
-        "confidence": f"{round(conf * 100)}%",
-        "brands": brands,
-        "stores": stores
-    })
+            items.append({
+                "class": translated_cls,
+                "confidence": f"{round(conf * 100)}%",
+                "brands": brands,
+                "stores": stores
+            })
 
         return JSONResponse(content={"results": items, "language": lang})
-
     except Exception as e:
         return JSONResponse(status_code=500, content={"error": str(e)})
-    finally:
-        os.remove(temp_filename)
-
-@app.get("/search")
-def search(query: str = Query(...)):
-    query_lower = query.lower()
-    category = None
-    brand = None
-
-    for c in clothing_to_brands.keys():
-        if c in query_lower:
-            category = c
-            break
-
-    for b in ALL_BRANDS:
-        if b.lower() in query_lower:
-            brand = b
-            break
-
-    shops = []
-    if category and brand:
-        shops.append({"brand": brand, "url": f"https://www.google.com/search?q={brand}+{category}"})
-    elif category:
-        for b in clothing_to_brands.get(category, []):
-            shops.append({"brand": b, "url": f"https://www.google.com/search?q={b}+{category}"})
-    elif brand:
-        shops.append({"brand": brand, "url": f"https://www.google.com/search?q={brand}+clothing"})
-
-    return {
-        "query": query,
-        "detected_category": category,
-        "detected_brand": brand,
-        "shop_results": shops,
-        "brands": ALL_BRANDS,
-        "stores": ALL_STORES
-    }
