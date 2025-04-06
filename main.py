@@ -1,13 +1,16 @@
 from fastapi import FastAPI, File, UploadFile
 from fastapi.responses import JSONResponse
-from inference import InferenceClient
+from inference_sdk import InferenceHTTPClient
 import shutil
 import uuid
 import os
 
 app = FastAPI()
 
-CLIENT = InferenceClient(api_url="https://detect.roboflow.com", api_key="YOUR_API_KEY")
+CLIENT = InferenceHTTPClient(
+    api_url="https://detect.roboflow.com",
+    api_key="YOUR_API_KEY"
+)
 
 translation_dict = {
     "T-shirt": "Футболка",
