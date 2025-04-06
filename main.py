@@ -79,7 +79,7 @@ async def detect(request: Request, file: UploadFile = File(...), lang: str = Non
             client_host = request.client.host
             lang = await get_language_by_ip(client_host)
 
-        result = CLIENT.infer(file.file, model_id="clothing-detection-scn9m/1")
+        result = CLIENT.infer(file, model_id="clothing-detection-sc9m9/1")
         predictions = result.get("predictions", [])
         items = []
 
