@@ -9,7 +9,7 @@ from typing import Optional
 app = FastAPI()
 
 rf = Roboflow(api_key="VJmICXJRnj9bYjhmsktT")
-project = rf.workspace().project("clothing-detection-sc9m1")
+project = rf.workspace().project("clothing-detection-scn9m")
 model = project.version(1).model
 
 CLIENT = model
@@ -65,7 +65,7 @@ async def detect(request: Request, file: UploadFile = File(...), lang: Optional[
         with open("temp.jpg", "wb") as f:
             f.write(contents)
 
-        result = CLIENT.predict("temp.jpg", confidence=40, overlap=30).json()
+        result = CLIENT.infer(file.file, model_id="object-detection-bounding-box-fg9op/clothing-detection-scn9m/1")
         predictions = result.get("predictions", [])
         items = []
 
