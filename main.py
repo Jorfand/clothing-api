@@ -90,13 +90,21 @@ async def detect(request: Request, file: UploadFile = File(...), lang: str = Que
             cls = prediction["class"]
             conf = prediction["confidence"]
             translated_cls = translate_class(cls, target_lang=lang)
+
             brands = clothing_to_brands.get(cls.lower(), [])
-            items.append({
-                "class": translated_cls,
-                "confidence": f"{round(conf * 100)}%",
-                "brands": brands,
-                "stores": ALL_STORES
-            })
+            stores = []
+            for brand in brands:
+            stores.append({
+            "brand": brand,
+            "store_link": brand_store_links.get(brand, f"https://www.google.com/search?q={brand}+{cls}")
+        })
+
+    items.append({
+        "class": translated_cls,
+        "confidence": f"{round(conf * 100)}%",
+        "brands": brands,
+        "stores": stores
+    })
 
         return JSONResponse(content={"results": items, "language": lang})
 
