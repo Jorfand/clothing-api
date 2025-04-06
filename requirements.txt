@@ -4,3 +4,4 @@ python-multipart
 roboflow
 httpx
 deep-translator
+inference-sdk
